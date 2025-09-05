@@ -149,7 +149,10 @@ make test-unit
 make test-integration
 
 # 生成覆蓋率報告
-make coverage
+make test-coverage
+
+# 快速查看覆蓋率
+make test-coverage-quick
 ```
 
 #### 前端測試
