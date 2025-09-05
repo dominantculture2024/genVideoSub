@@ -37,8 +37,9 @@ Golang Backend (Port 8080)
 - Goroutine 並發處理
 
 **AI 服務**:
-- fal.ai API 整合
-- 支持多種視頻字幕生成模型
+- fal.ai Kling Video v1.6 Pro API
+- 圖片轉視頻生成功能
+- 異步任務處理機制
 
 ## 📁 專案結構
 
@@ -73,7 +74,8 @@ genVideoSub/
 
 - Go 1.21+
 - Python 3.9+
-- fal.ai API Key
+- fal.ai API Key (FAL_KEY)
+- Node.js (用於開發工具)
 
 ### 本地開發
 
@@ -145,7 +147,8 @@ docker-compose logs -f
   },
   "fal_ai": {
     "api_key": "your-fal-ai-api-key",
-    "base_url": "https://fal.run/fal-ai"
+    "model_id": "fal-ai/kling-video/v1.6/pro",
+    "base_url": "https://queue.fal.run"
   },
   "storage": {
     "data_path": "./data",

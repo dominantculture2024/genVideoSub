@@ -8,12 +8,15 @@
   },
   "fal_ai": {
     "api_key": "your-fal-ai-api-key-here",
-    "base_url": "https://fal.run/fal-ai",
+    "model_id": "fal-ai/kling-video/v1.6/pro",
+    "base_url": "https://queue.fal.run",
     "timeout": "300s",
     "retry_count": 3,
-    "retry_delay": "5s"
-  },
-  "storage": {
+    "retry_delay": "5s",
+    "poll_interval": "5s",
+     "max_poll_attempts": 120
+   },
+   "storage": {
     "data_path": "./data",
     "temp_path": "./temp",
     "max_file_size": "100MB",

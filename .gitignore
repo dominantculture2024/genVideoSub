@@ -168,6 +168,14 @@ backend/temp/*
 !backend/data/.gitkeep
 !backend/temp/.gitkeep
 
+# Temp directories
+temp/uploads/*
+temp/processing/*
+temp/outputs/*
+!temp/uploads/.gitkeep
+!temp/processing/.gitkeep
+!temp/outputs/.gitkeep
+
 # Config files with sensitive data
 config/app.json
 *.key
@@ -192,3 +200,10 @@ logs/
 
 # Streamlit
 .streamlit/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
