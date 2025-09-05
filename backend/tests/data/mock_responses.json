@@ -1,0 +1,27 @@
+{
+  "submit_success": {
+    "request_id": "test-task-123",
+    "status": "IN_QUEUE"
+  },
+  "status_processing": {
+    "status": "IN_PROGRESS",
+    "progress": 45
+  },
+  "status_completed": {
+    "status": "COMPLETED",
+    "response_url": "https://mock-cdn.com/test-video.mp4"
+  },
+  "error_invalid_input": {
+    "error": "Invalid input parameters",
+    "code": "INVALID_INPUT"
+  },
+  "error_rate_limit": {
+    "error": "Rate limit exceeded",
+    "code": "RATE_LIMIT_EXCEEDED",
+    "retry_after": 60
+  },
+  "error_server_error": {
+    "error": "Internal server error",
+    "code": "INTERNAL_ERROR"
+  }
+}

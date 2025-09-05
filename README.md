@@ -123,6 +123,68 @@ streamlit run app.py
 1. 在「任務管理」頁面查看所有任務
 2. 可以查看任務詳情、下載結果或刪除任務
 
+## 🧪 測試策略
+
+本項目採用分層測試架構，確保系統的可靠性和穩定性。詳細的測試策略請參考 [TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md)。
+
+### 測試類型
+- **單元測試**: 測試個別組件和函數
+- **整合測試**: 測試組件間的交互
+- **端到端測試**: 測試完整的用戶流程
+- **性能測試**: 測試系統負載和響應時間
+
+### 運行測試
+
+#### 後端測試
+```bash
+cd backend
+
+# 運行所有測試
+make test
+
+# 運行單元測試
+make test-unit
+
+# 運行整合測試
+make test-integration
+
+# 生成覆蓋率報告
+make coverage
+```
+
+#### 前端測試
+```bash
+cd frontend
+
+# 安裝測試依賴
+pip install -r requirements-test.txt
+
+# 運行所有測試
+pytest tests/ -v
+
+# 運行單元測試
+pytest tests/unit/ -v
+
+# 運行整合測試
+pytest tests/integration/ -v
+
+# 運行端到端測試
+pytest tests/e2e/ -v
+
+# 生成覆蓋率報告
+pytest tests/ --cov=. --cov-report=html
+```
+
+### Mock 測試
+
+項目支持 fal.ai API 的 Mock 測試，無需真實 API 調用：
+
+```bash
+# 使用 Mock 模式運行測試
+export FAL_MOCK_MODE=true
+go test ./...
+```
+
 ## 🔧 API 接口
 
 ### 任務管理

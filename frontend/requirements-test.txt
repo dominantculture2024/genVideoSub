@@ -1,0 +1,7 @@
+pytest==7.4.0
+pytest-mock==3.11.1
+requests-mock==1.11.0
+selenium==4.11.2
+streamlit-testing==0.1.0
+pytest-cov==4.1.0
+pytest-html==3.2.0
