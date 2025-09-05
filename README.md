@@ -1,222 +1,197 @@
-# GenVideoSub - 視頻字幕生成系統
+# GenVideoSub - AI視頻生成服務
 
-一個基於 Streamlit 前端和 Golang 後端的輕量級視頻字幕生成系統，整合 fal.ai API 提供 AI 驅動的字幕生成功能。
+基於 fal.ai Kling Video API 的智能視頻生成平台，提供 Streamlit 前端界面和 Golang 後端服務。
 
-## 🚀 功能特色
+## 🚀 功能特點
 
-- **輕量級架構**: 無需外部數據庫，使用內存存儲 + JSON 文件持久化
-- **現代化界面**: 基於 Streamlit 的直觀 Web 界面
-- **高性能後端**: Golang + Gin 框架，支持並發處理
-- **AI 字幕生成**: 整合 fal.ai API，提供高質量字幕生成
-- **任務管理**: 完整的任務狀態追蹤和管理系統
-- **容器化部署**: 支持 Docker 和 Docker Compose 部署
+- 🎬 **AI視頻生成**: 基於 fal.ai Kling Video API
+- 📝 **提示詞驅動**: 支持文本到視頻生成
+- 🖼️ **圖片參考**: 可選的參考圖片上傳
+- ⚙️ **參數調節**: 支持時長、寬高比、CFG Scale 等參數
+- 📊 **任務管理**: 完整的任務創建、查詢、管理功能
+- 🔄 **異步處理**: 後台異步任務處理機制
+- 💾 **數據持久化**: JSON 文件存儲
 
-## 🏗️ 系統架構
+## 🏗️ 技術架構
 
+### 後端 (Golang)
+- **框架**: Gin Web Framework
+- **存儲**: JSON 文件存儲
+- **API整合**: fal.ai Kling Video API
+- **並發處理**: Goroutine 工作池
+
+### 前端 (Streamlit)
+- **界面**: Streamlit Web 應用
+- **組件**: 模塊化 UI 組件
+- **API客戶端**: HTTP 請求處理
+
+## 📋 系統要求
+
+### 後端要求
+- Go 1.21 或更高版本
+- fal.ai API Key
+
+### 前端要求
+- Python 3.8 或更高版本
+- pip 包管理器
+
+## 🛠️ 安裝和設置
+
+### 1. 克隆項目
+```bash
+git clone <repository-url>
+cd genVideoSub
 ```
-Streamlit Frontend (Port 8501)
-        ↓
-    HTTP API
-        ↓
-Golang Backend (Port 8080)
-        ↓
-   fal.ai API
+
+### 2. 後端設置
+
+#### 安裝 Go
+如果尚未安裝 Go，請從 [官方網站](https://golang.org/dl/) 下載並安裝。
+
+#### 安裝依賴
+```bash
+cd backend
+go mod tidy
 ```
 
-### 技術棧
+#### 配置環境變量
+創建 `backend/.env` 文件：
+```env
+FAL_API_KEY=your_fal_api_key_here
+SERVER_PORT=8080
+STORAGE_PATH=./data
+```
 
-**前端**:
-- Streamlit 1.28+
-- Python 3.9+
-- Requests, Pandas, Pillow
+#### 啟動後端服務
+```bash
+go run main.go
+```
 
-**後端**:
-- Golang 1.21+
-- Gin Web Framework
-- 內存存儲 + JSON 持久化
-- Goroutine 並發處理
+後端服務將在 `http://localhost:8080` 啟動。
 
-**AI 服務**:
-- fal.ai Kling Video v1.6 Pro API
-- 圖片轉視頻生成功能
-- 異步任務處理機制
+### 3. 前端設置
 
-## 📁 專案結構
+#### 安裝 Python 依賴
+```bash
+cd frontend
+pip install -r requirements.txt
+```
+
+#### 配置環境變量
+編輯 `frontend/.env` 文件：
+```env
+BACKEND_URL=http://localhost:8080
+FAL_API_KEY=your_fal_api_key_here
+```
+
+#### 啟動前端應用
+```bash
+streamlit run app.py
+```
+
+前端應用將在 `http://localhost:8501` 啟動。
+
+## 🔑 獲取 fal.ai API Key
+
+1. 訪問 [fal.ai](https://fal.ai/)
+2. 註冊並登錄賬戶
+3. 在控制台中生成 API Key
+4. 將 API Key 添加到環境變量中
+
+## 📖 使用說明
+
+### 創建視頻生成任務
+
+1. 打開前端應用 (`http://localhost:8501`)
+2. 在「創建任務」頁面填寫：
+   - **提示詞**: 描述想要生成的視頻內容
+   - **參考圖片**: (可選) 上傳參考圖片
+   - **視頻時長**: 1-10秒
+   - **寬高比**: 16:9, 9:16, 1:1
+   - **負面提示詞**: (可選) 不希望出現的內容
+   - **CFG Scale**: 控制生成內容與提示詞的相符程度
+3. 點擊「創建任務」
+
+### 查詢任務狀態
+
+1. 在「狀態查詢」頁面輸入任務 ID
+2. 點擊「查詢狀態」或「查詢結果」
+3. 查看任務進度和生成結果
+
+### 管理任務
+
+1. 在「任務管理」頁面查看所有任務
+2. 可以查看任務詳情、下載結果或刪除任務
+
+## 🔧 API 接口
+
+### 任務管理
+- `POST /api/tasks` - 創建任務
+- `GET /api/tasks` - 獲取任務列表
+- `GET /api/tasks/{id}` - 獲取任務信息
+- `GET /api/tasks/{id}/status` - 獲取任務狀態
+- `GET /api/tasks/{id}/result` - 獲取任務結果
+- `DELETE /api/tasks/{id}` - 刪除任務
+
+### 文件管理
+- `POST /api/files/upload` - 上傳文件
+- `GET /api/files/{id}` - 獲取文件
+- `GET /api/files/{id}/info` - 獲取文件信息
+- `DELETE /api/files/{id}` - 刪除文件
+
+## 📁 項目結構
 
 ```
 genVideoSub/
 ├── backend/                 # Golang 後端
 │   ├── config/             # 配置管理
 │   ├── handlers/           # HTTP 處理器
-│   ├── services/           # 業務邏輯服務
 │   ├── models/             # 數據模型
+│   ├── services/           # 業務邏輯
 │   ├── storage/            # 存儲層
-│   ├── utils/              # 工具函數
-│   ├── data/               # JSON 數據文件
-│   ├── temp/               # 臨時文件
-│   ├── go.mod              # Go 模組定義
-│   └── main.go             # 程序入口
+│   ├── main.go             # 主程序
+│   └── go.mod              # Go 模塊
 ├── frontend/               # Streamlit 前端
 │   ├── components/         # UI 組件
-│   ├── utils/              # 工具模組
+│   ├── utils/              # 工具函數
 │   ├── app.py              # 主應用
 │   └── requirements.txt    # Python 依賴
 ├── docs/                   # 文檔
-├── scripts/                # 部署腳本
-├── docker-compose.yml      # Docker Compose 配置
-├── .gitignore              # Git 忽略文件
-└── README.md               # 專案說明
+└── README.md               # 項目說明
 ```
 
-## 🚀 快速開始
+## 🐛 故障排除
 
-### 前置需求
+### 常見問題
 
-- Go 1.21+
-- Python 3.9+
-- fal.ai API Key (FAL_KEY)
-- Node.js (用於開發工具)
+1. **後端無法啟動**
+   - 檢查 Go 是否正確安裝
+   - 確認 fal.ai API Key 是否正確設置
+   - 檢查端口 8080 是否被占用
 
-### 本地開發
+2. **前端無法連接後端**
+   - 確認後端服務是否正在運行
+   - 檢查 `frontend/.env` 中的 `BACKEND_URL` 設置
 
-1. **克隆專案**
-```bash
-git clone https://github.com/dominantculture2024/genVideoSub.git
-cd genVideoSub
-```
+3. **任務創建失敗**
+   - 檢查 fal.ai API Key 是否有效
+   - 確認網絡連接正常
+   - 查看後端日誌獲取詳細錯誤信息
 
-2. **設置後端**
-```bash
-cd backend
-go mod tidy
-go run main.go
-```
+### 日誌查看
 
-3. **設置前端**
-```bash
-cd frontend
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-4. **訪問應用**
-- 前端界面: http://localhost:8501
-- 後端API: http://localhost:8080
-
-### Docker 部署
-
-```bash
-# 構建並啟動所有服務
-docker-compose up -d
-
-# 查看服務狀態
-docker-compose ps
-
-# 查看日誌
-docker-compose logs -f
-```
-
-## 📖 API 文檔
-
-### 核心端點
-
-- `GET /api/health` - 健康檢查
-- `POST /api/tasks` - 創建新任務
-- `GET /api/tasks/:id/status` - 查詢任務狀態
-- `GET /api/tasks` - 獲取任務列表
-- `POST /api/tasks/:id/completed` - 上傳完成的視頻
-- `DELETE /api/tasks/:id` - 刪除任務
-- `GET /api/metrics` - 系統指標
-
-### 任務狀態
-
-- `pending` - 等待處理
-- `processing` - 處理中
-- `completed` - 已完成
-- `failed` - 處理失敗
-
-## 🔧 配置
-
-### 後端配置 (backend/config/app.json)
-
-```json
-{
-  "server": {
-    "port": 8080,
-    "host": "0.0.0.0"
-  },
-  "fal_ai": {
-    "api_key": "your-fal-ai-api-key",
-    "model_id": "fal-ai/kling-video/v1.6/pro",
-    "base_url": "https://queue.fal.run"
-  },
-  "storage": {
-    "data_path": "./data",
-    "temp_path": "./temp"
-  },
-  "worker": {
-    "pool_size": 5,
-    "queue_size": 100
-  }
-}
-```
-
-### 前端配置
-
-在 Streamlit 界面中可以動態配置 API 服務器地址和連接設置。
-
-## 🧪 測試
-
-```bash
-# 後端測試
-cd backend
-go test ./...
-
-# 前端測試
-cd frontend
-python -m pytest tests/
-```
-
-## 📊 監控
-
-系統提供以下監控指標：
-
-- 任務處理統計
-- 系統資源使用情況
-- API 響應時間
-- 錯誤率統計
+後端日誌會輸出到控制台，包含詳細的錯誤信息和調試信息。
 
 ## 🤝 貢獻
 
-1. Fork 專案
-2. 創建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 開啟 Pull Request
-
-## 📝 開發分支
-
-- `main` - 生產環境分支
-- `dev` - 開發分支
-- `feature/*` - 功能開發分支
+歡迎提交 Issue 和 Pull Request 來改進項目。
 
 ## 📄 許可證
 
-本專案採用 MIT 許可證 - 詳見 [LICENSE](LICENSE) 文件
+本項目採用 MIT 許可證。
 
-## 🆘 支持
+## 🔗 相關鏈接
 
-如有問題或建議，請：
-
-1. 查看 [Issues](https://github.com/dominantculture2024/genVideoSub/issues)
-2. 創建新的 Issue
-3. 聯繫維護團隊
-
-## 🔄 版本歷史
-
-- v1.0.0 - 初始版本
-  - 基礎架構實現
-  - Streamlit 前端界面
-  - Golang 後端 API
-  - fal.ai 整合
-  - Docker 支持
+- [fal.ai 官網](https://fal.ai/)
+- [Streamlit 文檔](https://docs.streamlit.io/)
+- [Gin 框架文檔](https://gin-gonic.com/)

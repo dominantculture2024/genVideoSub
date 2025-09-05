@@ -1,2 +1,1 @@
-# Frontend components module
-# UI components will be organized here
+# Components package for GenVideoSub frontend

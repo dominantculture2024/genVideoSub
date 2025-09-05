@@ -1,168 +1,146 @@
 import streamlit as st
-import requests
-import json
-from datetime import datetime
-from utils.api_client import APIClient
+from streamlit_option_menu import option_menu
+from components.task_manager import (
+    create_task_form,
+    display_task_list,
+    display_task_status_checker
+)
+from utils.api_client import api_client
 
 # 頁面配置
 st.set_page_config(
-    page_title="genVideo&Sub - AI視頻生成平台",
+    page_title="GenVideoSub - AI視頻生成服務",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# 初始化API客戶端
-api_client = APIClient()
+# 自定義CSS樣式
+st.markdown("""
+<style>
+.main-header {
+    text-align: center;
+    padding: 1rem 0;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.status-pending { background-color: #ffeaa7; color: #2d3436; }
+.status-processing { background-color: #74b9ff; color: white; }
+.status-completed { background-color: #00b894; color: white; }
+.status-failed { background-color: #e17055; color: white; }
+</style>
+""", unsafe_allow_html=True)
 
 def main():
-    st.title("🎬 genVideo&Sub - AI視頻生成平台")
-    st.markdown("---")
+    """主函數"""
+    # 主標題
+    st.markdown("""
+    <div class="main-header">
+        <h1>🎬 GenVideoSub - AI視頻生成服務</h1>
+        <p>基於 fal.ai Kling Video API 的智能視頻生成平台</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # 側邊欄配置
+    # 側邊欄導航
     with st.sidebar:
-        st.header("⚙️ 系統配置")
+        st.markdown("### 🚀 導航菜單")
+        selected = option_menu(
+            None,
+            ["創建任務", "狀態查詢", "任務管理"],
+            icons=["plus-circle-fill", "search", "list-task"],
+            menu_icon="cast",
+            default_index=0,
+            styles={
+                "container": {"padding": "0!important", "background-color": "#fafafa"},
+                "icon": {"color": "#667eea", "font-size": "18px"}, 
+                "nav-link": {
+                    "font-size": "16px", 
+                    "text-align": "left", 
+                    "margin":"0px", 
+                    "--hover-color": "#eee"
+                },
+                "nav-link-selected": {"background-color": "#667eea"},
+            }
+        )
         
-        # API服務器配置
-        api_url = st.text_input(
-            "API服務器地址", 
-            value="http://localhost:8080",
-            help="後端API服務器的地址"
-        )
-        api_client.set_base_url(api_url)
+        # 側邊欄信息
+        st.markdown("---")
+        st.markdown("### 📊 系統信息")
         
-        # 檢查API連接狀態
-        if st.button("🔍 檢查API連接"):
-            status = api_client.check_health()
-            if status:
-                st.success("✅ API連接正常")
-            else:
-                st.error("❌ API連接失敗")
-    
-    # 主要功能區域
-    tab1, tab2, tab3 = st.tabs(["📤 創建任務", "📊 任務狀態", "📋 任務列表"])
-    
-    with tab1:
-        create_task_interface()
-    
-    with tab2:
-        task_status_interface()
-    
-    with tab3:
-        task_list_interface()
-
-def create_task_interface():
-    """創建任務界面"""
-    st.header("創建新的視頻生成任務")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("基本信息")
-        task_id = st.number_input("任務ID", min_value=1, value=1)
-        image_path = st.text_input(
-            "圖片URL", 
-            placeholder="https://example.com/image.jpg",
-            help="輸入圖片的URL地址"
-        )
-        prompt = st.text_area(
-            "AI生成提示詞", 
-            placeholder="描述您想要生成的視頻內容...",
-            height=100
-        )
-    
-    with col2:
-        st.subheader("字幕設置")
-        subtitle = st.text_area(
-            "字幕內容", 
-            placeholder="輸入字幕文字...",
-            height=100
-        )
-        subtitle_color = st.selectbox(
-            "字幕顏色", 
-            ["white", "black", "red", "blue", "green", "yellow"]
-        )
-        subtitle_position = st.selectbox(
-            "字幕位置", 
-            ["bottom", "top", "center", "left", "right"]
-        )
-    
-    # 預覽區域
-    if image_path:
-        st.subheader("圖片預覽")
+        # 檢查後端連接狀態
         try:
-            st.image(image_path, caption="輸入圖片", use_column_width=True)
+            result = api_client.list_tasks(limit=1)
+            if "error" not in result:
+                st.success("🟢 後端服務正常")
+            else:
+                st.error("🔴 後端服務異常")
         except:
-            st.error("無法載入圖片，請檢查URL是否正確")
-    
-    # 提交按鈕
-    if st.button("🚀 創建任務", type="primary"):
-        if not all([task_id, image_path, subtitle, prompt]):
-            st.error("請填寫所有必填欄位")
-            return
+            st.error("🔴 無法連接後端")
         
-        task_data = {
-            "id": task_id,
-            "image_path": image_path,
-            "subtitle_color": subtitle_color,
-            "subtitle_position": subtitle_position,
-            "subtitle": subtitle,
-            "prompt": prompt
-        }
+        st.markdown("""
+        ### 📝 使用說明
+        1. **創建任務**: 輸入提示詞生成視頻
+        2. **狀態查詢**: 查看任務進度和結果
+        3. **任務管理**: 管理所有視頻生成任務
         
-        with st.spinner("正在創建任務..."):
-            result = api_client.create_task(task_data)
-            if result:
-                st.success(f"✅ 任務創建成功！外部ID: {result.get('external_id', 'N/A')}")
-                st.json(result)
-            else:
-                st.error("❌ 任務創建失敗")
+        ### 🔧 技術支持
+        - 基於 fal.ai Kling Video API
+        - 支持多種視頻格式和比例
+        - 異步任務處理
+        """)
+    
+    # 主內容區域
+    if selected == "創建任務":
+        create_task_page()
+    elif selected == "狀態查詢":
+        status_query_page()
+    elif selected == "任務管理":
+        task_management_page()
 
-def task_status_interface():
-    """任務狀態查詢界面"""
-    st.header("查詢任務狀態")
+def create_task_page():
+    """創建任務頁面"""
+    create_task_form()
     
-    task_id = st.number_input("輸入任務ID", min_value=1, value=1)
+    # 顯示最近任務
+    st.markdown("---")
+    st.subheader("📈 最近任務")
     
-    if st.button("🔍 查詢狀態"):
-        with st.spinner("正在查詢任務狀態..."):
-            status = api_client.get_task_status(task_id)
-            if status:
-                st.success("✅ 查詢成功")
-                
-                # 狀態顯示
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("任務ID", status.get('id', 'N/A'))
-                with col2:
-                    st.metric("狀態", status.get('status', 'N/A'))
-                with col3:
-                    st.metric("外部ID", status.get('external_id', 'N/A'))
-                
-                # 詳細信息
-                st.json(status)
-            else:
-                st.error("❌ 查詢失敗或任務不存在")
+    try:
+        result = api_client.list_tasks(limit=5)
+        if "error" not in result and result.get("tasks"):
+            tasks = result["tasks"][:5]
+            for i, task in enumerate(tasks):
+                with st.expander(f"任務 {i+1}: {task.get('id', '')[:8]}..."):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write(f"**狀態**: {task.get('status', 'unknown')}")
+                    with col2:
+                        st.write(f"**時長**: {task.get('duration', 0)}s")
+                    with col3:
+                        st.write(f"**比例**: {task.get('aspect_ratio', '')}")
+                    st.write(f"**提示詞**: {task.get('prompt', '')[:100]}...")
+        else:
+            st.info("暫無最近任務")
+    except Exception as e:
+        st.error(f"載入最近任務失敗: {str(e)}")
 
-def task_list_interface():
-    """任務列表界面"""
-    st.header("任務列表")
-    
-    if st.button("🔄 刷新列表"):
-        with st.spinner("正在載入任務列表..."):
-            tasks = api_client.get_task_list()
-            if tasks:
-                st.success(f"✅ 找到 {len(tasks)} 個任務")
-                
-                # 顯示任務表格
-                if tasks:
-                    import pandas as pd
-                    df = pd.DataFrame(tasks)
-                    st.dataframe(df, use_container_width=True)
-                else:
-                    st.info("📝 暫無任務")
-            else:
-                st.error("❌ 載入任務列表失敗")
+def status_query_page():
+    """狀態查詢頁面"""
+    display_task_status_checker()
+
+def task_management_page():
+    """任務管理頁面"""
+    display_task_list()
 
 if __name__ == "__main__":
     main()
