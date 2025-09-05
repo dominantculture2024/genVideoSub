@@ -1,0 +1,39 @@
+{
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0",
+    "read_timeout": "30s",
+    "write_timeout": "30s",
+    "idle_timeout": "60s"
+  },
+  "fal_ai": {
+    "api_key": "your-fal-ai-api-key-here",
+    "base_url": "https://fal.run/fal-ai",
+    "timeout": "300s",
+    "retry_count": 3,
+    "retry_delay": "5s"
+  },
+  "storage": {
+    "data_path": "./data",
+    "temp_path": "./temp",
+    "max_file_size": "100MB",
+    "cleanup_interval": "1h",
+    "temp_file_ttl": "24h"
+  },
+  "worker": {
+    "pool_size": 5,
+    "queue_size": 100,
+    "task_timeout": "600s",
+    "max_retries": 3
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "output": "stdout"
+  },
+  "cors": {
+    "allowed_origins": ["http://localhost:8501", "http://127.0.0.1:8501"],
+    "allowed_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowed_headers": ["Content-Type", "Authorization", "X-Requested-With"]
+  }
+}

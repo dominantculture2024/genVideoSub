@@ -1,0 +1,13 @@
+{
+  "name": "genvideosub",
+  "version": "1.0.0",
+  "description": "一個模組化的AI視頻生成工具，專門用於處理影片和字幕資訊，對外接入AI生成影片服務。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
