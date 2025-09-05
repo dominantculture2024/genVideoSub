@@ -15,6 +15,7 @@ test-integration:
 # 生成測試覆蓋率報告
 test-coverage:
 	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 
 # 運行基準測試
@@ -33,3 +34,9 @@ clean:
 # 運行測試並生成報告
 test-report: test-coverage
 	@echo "測試完成，覆蓋率報告已生成：coverage.html"
+	@echo "覆蓋率詳情請查看上方輸出或打開 coverage.html"
+
+# 快速查看覆蓋率
+test-coverage-quick:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out

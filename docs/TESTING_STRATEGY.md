@@ -841,12 +841,14 @@ jobs:
       run: |
         cd backend
         go test -coverprofile=coverage.out ./...
+        go tool cover -func=coverage.out
         go tool cover -html=coverage.out -o coverage.html
     
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v3
       with:
-        file: ./backend/coverage.out
+        name: backend-coverage
+        path: backend/coverage.html
 
   frontend-tests:
     runs-on: ubuntu-latest
@@ -867,7 +869,13 @@ jobs:
     - name: Run tests
       run: |
         cd frontend
-        pytest tests/ -v
+        pytest tests/ -v --cov=. --cov-report=html --cov-report=term
+    
+    - name: Upload frontend coverage artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-coverage
+        path: frontend/htmlcov/
 
   e2e-tests:
     runs-on: ubuntu-latest
