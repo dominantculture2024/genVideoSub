@@ -1,0 +1,46 @@
+{
+  "name": "genvideosub",
+  "version": "1.0.0",
+  "description": "一個基於 Streamlit 前端和 Golang 後端的輕量級視頻字幕生成系統，整合 fal.ai API 提供 AI 驅動的字幕生成功能。",
+  "main": "index.js",
+  "scripts": {
+    "dev:frontend": "cd frontend && streamlit run app.py",
+    "dev:backend": "cd backend && go run main.go",
+    "build:backend": "cd backend && go build -o ../bin/genvideosub main.go",
+    "test:backend": "cd backend && go test ./...",
+    "test:frontend": "cd frontend && python -m pytest tests/",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "check": "echo \"Running project checks...\" && npm run test:backend && npm run test:frontend",
+    "start": "docker-compose up -d"
+  },
+  "keywords": [
+    "video",
+    "subtitle",
+    "ai",
+    "streamlit",
+    "golang",
+    "fal.ai",
+    "video-generation"
+  ],
+  "author": "dominantculture2024",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dominantculture2024/genVideoSub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dominantculture2024/genVideoSub/issues"
+  },
+  "homepage": "https://github.com/dominantculture2024/genVideoSub#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "go": ">=1.21.0",
+    "python": ">=3.9.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

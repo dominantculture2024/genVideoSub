@@ -17,12 +17,171 @@
 # Go workspace file
 go.work
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PIPFILE.lock
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
 # IDE files
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Data files
+backend/data/*.json
+backend/temp/*
+!backend/data/.gitkeep
+!backend/temp/.gitkeep
+
+# Temp directories
+temp/uploads/*
+temp/processing/*
+temp/outputs/*
+!temp/uploads/.gitkeep
+!temp/processing/.gitkeep
+!temp/outputs/.gitkeep
+
+# Config files with sensitive data
+config/app.json
+*.key
+*.pem
+*.p12
 
 # OS generated files
 .DS_Store
@@ -37,6 +196,7 @@ Thumbs.db
 *.log
 logs/
 
+<<<<<<< HEAD
 # Runtime data
 pids
 *.pid
@@ -68,3 +228,37 @@ videos/
 *.avi
 *.mov
 *.mkv
+=======
+# Docker
+.dockerignore
+
+# Go installer files
+*.msi
+*.pkg
+*.deb
+*.rpm
+
+# Backend uploads and temp files
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/testdata/*
+!backend/testdata/.gitkeep
+
+# Compiled binaries
+backend/genVideoSub
+backend/genVideoSub.exe
+
+# Test coverage
+backend/coverage.out
+backend/coverage.html
+
+# Streamlit
+.streamlit/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+>>>>>>> d7c80a8135ea0d73ceeb0ea9c68c9626fda4b8a8

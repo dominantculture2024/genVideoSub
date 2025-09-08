@@ -1,0 +1,19 @@
+# 測試環境配置
+development:
+  fal_ai:
+    use_mock: true
+    api_key: "test-key"
+    base_url: "http://localhost:8081"
+  storage:
+    data_dir: "./test_data"
+  server:
+    port: 8080
+    debug: true
+
+# CI/CD 環境配置
+ci:
+  fal_ai:
+    use_mock: true
+    api_key: "${FAL_API_KEY_TEST}"
+  storage:
+    data_dir: "/tmp/genVideoSub_
