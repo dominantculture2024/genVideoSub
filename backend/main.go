@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,41 +25,42 @@ func main() {
 	})
 	logrus.SetLevel(logrus.InfoLevel)
 
-	// 加載配置
-	cfg := config.LoadConfig()
-	logrus.Infof("Loaded configuration: Server=%s:%d, Workers=%d", cfg.Server.Host, cfg.Server.Port, cfg.Worker.PoolSize)
+	// 加載測試配置
+	testConfig := config.LoadTestConfig()
+	logrus.Infof("Environment: %s, Mock enabled: %v", testConfig.GetEnvironment(), testConfig.IsMockEnabled())
+
+	// 創建服務工廠
+	serviceFactory := services.NewServiceFactory(testConfig)
 
 	// 初始化存儲
-	jsonStorage, err := storage.NewJSONStorage(cfg.Storage.DataDir)
+	jsonStorage, err := storage.NewJSONStorage(testConfig.TestDataPath)
 	if err != nil {
 		logrus.Fatalf("Failed to initialize storage: %v", err)
 	}
 	logrus.Info("JSON storage initialized")
 
-	// 初始化fal.ai服務
-	falService := services.NewFalAIService(
-		cfg.FalAI.APIKey,
-		cfg.FalAI.BaseURL,
-		time.Duration(cfg.FalAI.Timeout)*time.Second,
-	)
-	logrus.Info("FalAI service initialized")
+	// 獲取fal.ai服務（自動選擇mock或真實服務）
+	falService := serviceFactory.GetFalAIService()
+	logrus.Infof("FalAI service initialized (type: %s)", testConfig.GetEnvironment())
 
 	// 初始化任務服務
-	taskService := services.NewTaskService(jsonStorage, falService, cfg.Worker.PoolSize)
+	taskService := services.NewTaskService(jsonStorage, falService, testConfig.MaxConcurrent)
 	logrus.Info("Task service initialized")
 
 	// 啟動工作協程池
 	taskService.StartWorkers()
-	logrus.Infof("Started %d task workers", cfg.Worker.PoolSize)
+	logrus.Infof("Started %d task workers", testConfig.MaxConcurrent)
 
 	// 初始化處理器
 	taskHandler := handlers.NewTaskHandler(taskService)
-	fileHandler := handlers.NewFileHandler(jsonStorage, cfg.Storage.UploadDir, cfg.Storage.MaxFileSize)
+	fileHandler := handlers.NewFileHandler(jsonStorage, "./temp", 104857600) // 100MB
 	logrus.Info("Handlers initialized")
 
 	// 創建 Gin 路由器
-	if cfg.Server.Mode == "release" {
+	if testConfig.GetEnvironment() == "production" {
 		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
 	}
 	r := gin.Default()
 
@@ -106,7 +106,7 @@ func main() {
 	}
 
 	// 創建HTTP服務器
-	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	addr := "localhost:8080"
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: r,

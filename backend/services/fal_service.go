@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"genVideoSub/interfaces"
 	"genVideoSub/models"
 	"github.com/sirupsen/logrus"
 )
@@ -20,8 +21,11 @@ type FalAIService struct {
 	client  *http.Client
 }
 
+// 確保FalAIService實現FalAIInterface接口
+var _ interfaces.FalAIInterface = (*FalAIService)(nil)
+
 // NewFalAIService 創建新的fal.ai服務實例
-func NewFalAIService(apiKey, baseURL string, timeout time.Duration) *FalAIService {
+func NewFalAIService(apiKey, baseURL string, timeout time.Duration) interfaces.FalAIInterface {
 	return &FalAIService{
 		apiKey:  apiKey,
 		baseURL: baseURL,
