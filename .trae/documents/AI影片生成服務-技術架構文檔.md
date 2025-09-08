@@ -4,39 +4,51 @@
 
 ```mermaid
 graph TD
-    A[外部調用方] --> B[Golang HTTP Server]
-    B --> C[任務管理模組]
-    C --> D[Redis 任務佇列]
-    B --> E[影片處理模組]
-    E --> F[外部 AI 服務 API]
-    E --> G[FFmpeg 字幕處理]
-    B --> H[檔案存儲模組]
-    H --> I[本地檔案系統]
-    B --> J[回調通知模組]
-    J --> K[外部回調端點]
+    A[用戶瀏覽器] --> B[React 前端應用]
+    B --> C[Golang HTTP Server]
+    C --> D[任務管理模組]
+    D --> E[Redis 任務佇列]
+    C --> F[影片處理模組]
+    F --> G[外部 AI 服務 API]
+    F --> H[模擬影片服務]
+    F --> I[FFmpeg 字幕處理]
+    C --> J[檔案存儲模組]
+    J --> K[本地檔案系統]
+    C --> L[回調通知模組]
+    L --> M[外部回調端點]
+    C --> N[配置管理模組]
+
+    subgraph "前端層"
+        B
+    end
 
     subgraph "應用層"
-        B
         C
-        E
-        H
+        D
+        F
         J
+        L
+        N
     end
 
     subgraph "存儲層"
-        D
-        I
+        E
+        K
     end
 
     subgraph "外部服務"
-        F
-        K
+        G
+        M
+    end
+
+    subgraph "模擬服務"
+        H
     end
 ```
 
 ## 2. Technology Description
 
-* Frontend: 無（純後端 API 服務）
+* Frontend: React\@18 + TypeScript + Vite + Tailwind CSS
 
 * Backend: Go\@1.21 + Gin\@1.9 + Redis\@7.0
 
@@ -50,16 +62,76 @@ graph TD
 
 ## 3. Route definitions
 
+### 3.1 前端路由
+
+| Route     | Purpose      |
+| --------- | ------------ |
+| /         | 主頁面 - 任務提交和管理 |
+| /tasks    | 任務列表頁面       |
+| /settings | 設定頁面 - 模式切換   |
+
+### 3.2 後端 API 路由
+
 | Route                         | Purpose    |
 | ----------------------------- | ---------- |
 | POST /api/v1/generate-video   | 接收影片生成任務請求 |
 | GET /api/v1/tasks/{id}/status | 查詢任務執行狀態   |
+| GET /api/v1/tasks             | 獲取任務列表     |
+| POST /api/v1/config/mode      | 切換運行模式     |
+| GET /api/v1/config            | 獲取當前配置     |
 | GET /health                   | 服務健康檢查端點   |
 | GET /metrics                  | 服務監控指標端點   |
 
 ## 4. API definitions
 
 ### 4.1 Core API
+
+#### 配置管理
+
+```
+GET /api/v1/config
+```
+
+Response:
+
+| Param Name | Param Type | Description |
+|------------|------------|--------------|
+| mode       | string     | 當前運行模式（"mock" 或 "production"） |
+| ai_service_url | string | AI 服務端點 URL |
+| mock_video_path | string | 模擬影片檔案路徑 |
+
+```
+POST /api/v1/config/mode
+```
+
+Request:
+
+| Param Name | Param Type | isRequired | Description |
+|------------|------------|------------|-------------|
+| mode       | string     | true       | 運行模式（"mock" 或 "production"） |
+
+Response:
+
+| Param Name | Param Type | Description |
+|------------|------------|--------------|
+| success    | boolean    | 操作是否成功 |
+| message    | string     | 狀態訊息 |
+| mode       | string     | 更新後的模式 |
+
+#### 任務列表
+
+```
+GET /api/v1/tasks
+```
+
+Response:
+
+| Param Name | Param Type | Description |
+|------------|------------|--------------|
+| tasks      | array      | 任務列表 |
+| total      | integer    | 總任務數量 |
+| page       | integer    | 當前頁碼 |
+| limit      | integer    | 每頁數量 |
 
 #### 影片生成任務
 
@@ -155,6 +227,11 @@ graph TD
     
     B --> J[Callback Client]
     J --> K[External Callback API]
+    
+    B --> L[Config Service]
+    L --> M[Mock Video Service]
+    
+    B --> N[Frontend Static Files]
 
     subgraph Server
         A
@@ -163,7 +240,21 @@ graph TD
         F
         H
         J
+        L
+        N
     end
+    
+    subgraph Frontend
+        O[React App]
+        P[Task Management]
+        Q[Mode Switcher]
+        R[Video Preview]
+    end
+    
+    O --> A
+    P --> A
+    Q --> A
+    R --> A
 ```
 
 ## 6. Data model
@@ -195,6 +286,13 @@ erDiagram
     }
     
     TASK ||--o{ TASK_LOG : logs
+    
+    CONFIG {
+        string key PK
+        string value
+        string type
+        datetime updated_at
+    }
 ```
 
 ### 6.2 Data Definition Language
@@ -257,5 +355,31 @@ const (
     StatusCompleted  = "completed"
     StatusFailed     = "failed"
 )
+```
+
+#### Redis 初始化腳本
+
+```
+-- 任務狀態索引 (Redis Set)
+SADD tasks_by_status:pending {task_id}
+SADD tasks_by_status:processing {task_id}
+SADD tasks_by_status:completed {task_id}
+SADD tasks_by_status:failed {task_id}
+
+-- 系統配置 (Redis Hash)
+HSET config:system mode "production"
+HSET config:system ai_service_url "https://api.example.com/generate-video"
+HSET config:system mock_video_path "/assets/mock-video.mp4"
+HSET config:system callback_url "https://external-api.com/video-tasks"
+
+-- Redis 配置常數
+SET config:max_queue_size 1000
+SET config:task_timeout 3600
+SET config:retry_attempts 3
+
+-- 前端配置
+HSET config:frontend theme "light"
+HSET config:frontend auto_refresh "true"
+HSET config:frontend refresh_interval "5000"
 ```
 
