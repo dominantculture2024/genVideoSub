@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"genVideoSub/interfaces"
 	"genVideoSub/models"
 	"genVideoSub/storage"
 	"github.com/google/uuid"
@@ -12,21 +13,21 @@ import (
 
 // TaskService 任務管理服務
 type TaskService struct {
-	storage   storage.Storage
-	falAI     *FalAIService
-	workerNum int
-	taskChan  chan string
-	stopChan  chan bool
+	storage     storage.Storage
+	videoService interfaces.VideoGenerationInterface
+	workerNum   int
+	taskChan    chan string
+	stopChan    chan bool
 }
 
 // NewTaskService 創建新的任務服務實例
-func NewTaskService(storage storage.Storage, falAI *FalAIService, workerNum int) *TaskService {
+func NewTaskService(storage storage.Storage, videoService interfaces.VideoGenerationInterface, workerNum int) *TaskService {
 	return &TaskService{
-		storage:   storage,
-		falAI:     falAI,
-		workerNum: workerNum,
-		taskChan:  make(chan string, 100),
-		stopChan:  make(chan bool),
+		storage:     storage,
+		videoService: videoService,
+		workerNum:   workerNum,
+		taskChan:    make(chan string, 100),
+		stopChan:    make(chan bool),
 	}
 }
 
@@ -44,7 +45,7 @@ func (ts *TaskService) CreateTask(request *models.TaskCreateRequest) (*models.Ta
 		AspectRatio:    request.AspectRatio,
 		NegativePrompt: request.NegativePrompt,
 		CfgScale:       request.CfgScale,
-		Status:         models.StatusPending,
+		Status:         models.TaskStatusPending,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -102,7 +103,7 @@ func (ts *TaskService) GetTaskResult(taskID string) (*models.TaskResultResponse,
 		return nil, err
 	}
 
-	if task.Status != models.StatusCompleted {
+	if task.Status != models.TaskStatusCompleted {
 		return nil, fmt.Errorf("task is not completed yet")
 	}
 
@@ -180,7 +181,7 @@ func (ts *TaskService) worker(workerID int) {
 // processTask 處理單個任務
 func (ts *TaskService) processTask(taskID string) {
 	// 更新任務狀態為處理中
-	if err := ts.UpdateTaskStatus(taskID, models.StatusProcessing, "Submitting to fal.ai", 10); err != nil {
+	if err := ts.UpdateTaskStatus(taskID, models.TaskStatusProcessing, "Submitting to fal.ai", 10); err != nil {
 		logrus.Errorf("Failed to update task status: %v", err)
 		return
 	}
@@ -189,7 +190,7 @@ func (ts *TaskService) processTask(taskID string) {
 	task, err := ts.GetTask(taskID)
 	if err != nil {
 		logrus.Errorf("Failed to get task %s: %v", taskID, err)
-		ts.UpdateTaskStatus(taskID, models.StatusFailed, fmt.Sprintf("Failed to get task: %v", err), 0)
+		ts.UpdateTaskStatus(taskID, models.TaskStatusFailed, fmt.Sprintf("Failed to get task: %v", err), 0)
 		return
 	}
 
@@ -203,17 +204,17 @@ func (ts *TaskService) processTask(taskID string) {
 		CfgScale:       task.CfgScale,
 	}
 
-	// 提交任務到fal.ai
-	var falResponse *models.FalAIResponse
-	err = ts.falAI.RetryWithBackoff(func() error {
+	// 提交任務到視頻生成服務
+	var falResponse *models.APIResponse
+	err = ts.videoService.RetryWithBackoff(func() error {
 		var submitErr error
-		falResponse, submitErr = ts.falAI.SubmitTask(request)
+		falResponse, submitErr = ts.videoService.SubmitTask(request)
 		return submitErr
 	}, 3)
 
 	if err != nil {
 		logrus.Errorf("Failed to submit task %s to fal.ai: %v", taskID, err)
-		ts.UpdateTaskStatus(taskID, models.StatusFailed, fmt.Sprintf("Failed to submit: %v", err), 0)
+		ts.UpdateTaskStatus(taskID, models.TaskStatusFailed, fmt.Sprintf("Failed to submit: %v", err), 0)
 		return
 	}
 
@@ -224,7 +225,7 @@ func (ts *TaskService) processTask(taskID string) {
 	}
 
 	// 更新狀態為等待處理
-	ts.UpdateTaskStatus(taskID, models.StatusProcessing, "Waiting for fal.ai processing", 30)
+	ts.UpdateTaskStatus(taskID, models.TaskStatusProcessing, "Waiting for fal.ai processing", 30)
 
 	// 輪詢任務狀態
 	ts.pollTaskStatus(taskID, falResponse.RequestID)
@@ -238,8 +239,8 @@ func (ts *TaskService) pollTaskStatus(taskID, requestID string) {
 	for i := 0; i < maxPolls; i++ {
 		time.Sleep(pollInterval)
 
-		// 查詢fal.ai狀態
-		status, err := ts.falAI.GetTaskStatus(requestID)
+		// 查詢視頻生成服務狀態
+		status, err := ts.videoService.GetTaskStatus(requestID)
 		if err != nil {
 			logrus.Errorf("Failed to get status for task %s: %v", taskID, err)
 			continue
@@ -250,30 +251,36 @@ func (ts *TaskService) pollTaskStatus(taskID, requestID string) {
 		switch status {
 		case "COMPLETED":
 			// 獲取結果
-			result, err := ts.falAI.GetTaskResult(requestID)
+			result, err := ts.videoService.GetTaskResult(requestID)
 			if err != nil {
 				logrus.Errorf("Failed to get result for task %s: %v", taskID, err)
-				ts.UpdateTaskStatus(taskID, models.StatusFailed, fmt.Sprintf("Failed to get result: %v", err), 90)
+				ts.UpdateTaskStatus(taskID, models.TaskStatusFailed, fmt.Sprintf("Failed to get result: %v", err), 90)
 				return
 			}
 
 			// 更新任務結果
 			task, _ := ts.GetTask(taskID)
-			task.VideoURL = result.VideoURL
-			ts.storage.SaveTask(task)
+			if videoData, ok := result.Result.(map[string]interface{}); ok {
+				if videoURL, exists := videoData["video_url"]; exists {
+					task.VideoURL = videoURL.(string)
+				}
+			}
+			if err := ts.storage.SaveTask(task); err != nil {
+				logrus.Errorf("Failed to save task result for %s: %v", taskID, err)
+			}
 
 			// 標記為完成
-			ts.UpdateTaskStatus(taskID, models.StatusCompleted, "Video generation completed", 100)
+			ts.UpdateTaskStatus(taskID, models.TaskStatusCompleted, "Video generation completed", 100)
 			return
 
 		case "FAILED":
-			ts.UpdateTaskStatus(taskID, models.StatusFailed, "fal.ai processing failed", 0)
+			ts.UpdateTaskStatus(taskID, models.TaskStatusFailed, "fal.ai processing failed", 0)
 			return
 
 		case "IN_PROGRESS", "IN_QUEUE":
 			// 更新進度
 			progress := 30 + (i * 60 / maxPolls)
-			ts.UpdateTaskStatus(taskID, models.StatusProcessing, fmt.Sprintf("Processing... (%s)", status), progress)
+			ts.UpdateTaskStatus(taskID, models.TaskStatusProcessing, fmt.Sprintf("Processing... (%s)", status), progress)
 			continue
 
 		default:
@@ -284,5 +291,5 @@ func (ts *TaskService) pollTaskStatus(taskID, requestID string) {
 
 	// 超時處理
 	logrus.Errorf("Task %s polling timeout after %d attempts", taskID, maxPolls)
-	ts.UpdateTaskStatus(taskID, models.StatusFailed, "Processing timeout", 0)
+	ts.UpdateTaskStatus(taskID, models.TaskStatusFailed, "Processing timeout", 0)
 }

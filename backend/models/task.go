@@ -26,18 +26,25 @@ type Task struct {
 	Status         TaskStatus `json:"status"`
 	RequestID      string     `json:"request_id"`      // fal.ai請求ID
 	VideoURL       string     `json:"video_url"`       // 生成的視頻URL
+	Progress       int        `json:"progress"`         // 處理進度 (0-100)
+	Message        string     `json:"message"`          // 狀態消息
 	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 	CompletedAt    *time.Time `json:"completed_at"`
 }
 
 // TempFile 臨時文件結構
 type TempFile struct {
-	ID        string    `json:"id"`
-	TaskID    int       `json:"task_id"`
-	FilePath  string    `json:"file_path"`
-	FileType  string    `json:"file_type"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiresAt time.Time `json:"expires_at"`
+	ID           string    `json:"id"`
+	TaskID       int       `json:"task_id"`
+	FilePath     string    `json:"file_path"`
+	FileType     string    `json:"file_type"`
+	OriginalName string    `json:"original_name"`
+	Filename     string    `json:"filename"`
+	Size         int64     `json:"size"`
+	MimeType     string    `json:"mime_type"`
+	CreatedAt    time.Time `json:"created_at"`
+	ExpiresAt    time.Time `json:"expires_at"`
 }
 
 // TaskCreateRequest 創建任務請求結構 - 根據fal.ai API規格
@@ -52,26 +59,27 @@ type TaskCreateRequest struct {
 
 // TaskResponse 任務響應結構
 type TaskResponse struct {
-	Status    TaskStatus `json:"status"`
-	RequestID string     `json:"request_id"`
-	TaskID    string     `json:"task_id"`
+	ID        string    `json:"id"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // TaskStatusResponse 任務狀態響應結構
 type TaskStatusResponse struct {
-	ID          string     `json:"id"`
-	Status      TaskStatus `json:"status"`
-	RequestID   string     `json:"request_id"`
-	CreatedAt   time.Time  `json:"created_at"`
-	CompletedAt *time.Time `json:"completed_at"`
+	ID        string    `json:"id"`
+	Status    string    `json:"status"`
+	Progress  int       `json:"progress"`
+	Message   string    `json:"message"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // TaskResultResponse 任務結果響應結構
 type TaskResultResponse struct {
-	Success   bool   `json:"success"`
-	VideoURL  string `json:"video_url"`
-	RequestID string `json:"request_id"`
-	Status    TaskStatus `json:"status"`
+	ID        string    `json:"id"`
+	Status    string    `json:"status"`
+	VideoURL  string    `json:"video_url"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // FalAIRequest fal.ai API請求結構

@@ -3,8 +3,10 @@ package services
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"genVideoSub/config"
+	"genVideoSub/interfaces"
 )
 
 // ServiceFactory 服務工廠
@@ -20,7 +22,7 @@ func NewServiceFactory(cfg *config.TestConfig) *ServiceFactory {
 }
 
 // CreateFalAIService 創建FalAI服務實例
-func (f *ServiceFactory) CreateFalAIService() (FalAIInterface, error) {
+func (f *ServiceFactory) CreateFalAIService() (interfaces.VideoGenerationInterface, error) {
 	if f.config == nil {
 		return nil, fmt.Errorf("config is nil")
 	}
@@ -36,7 +38,11 @@ func (f *ServiceFactory) CreateFalAIService() (FalAIInterface, error) {
 		return NewFalMockService(), nil
 	} else {
 		log.Printf("Creating FalAI Real Service (Environment: %s)", f.config.GetEnvironment())
-		return NewFalAIService(f.config.FalAPIKey), nil
+		// 使用正確的參數調用NewFalAIService
+		apiKey := f.config.FalAPIKey
+		baseURL := "https://fal.run"
+		timeout := 300 * time.Second
+		return NewFalAIService(apiKey, baseURL, timeout), nil
 	}
 }
 
@@ -70,7 +76,7 @@ func DefaultServiceFactory() *ServiceFactory {
 }
 
 // CreateFalAIServiceWithConfig 使用指定配置創建FalAI服務
-func CreateFalAIServiceWithConfig(useMock bool, apiKey string) (FalAIInterface, error) {
+func CreateFalAIServiceWithConfig(useMock bool, apiKey string) (interfaces.VideoGenerationInterface, error) {
 	if useMock {
 		log.Println("Creating FalAI Mock Service")
 		return NewFalMockService(), nil
@@ -81,18 +87,22 @@ func CreateFalAIServiceWithConfig(useMock bool, apiKey string) (FalAIInterface, 
 	}
 	
 	log.Println("Creating FalAI Real Service")
-	return NewFalAIService(apiKey), nil
+	baseURL := "https://fal.run"
+	timeout := 300 * time.Second
+	return NewFalAIService(apiKey, baseURL, timeout), nil
 }
 
 // CreateTestService 創建測試專用服務
-func CreateTestService() FalAIInterface {
+func CreateTestService() interfaces.VideoGenerationInterface {
 	return NewFalMockService()
 }
 
 // CreateProductionService 創建生產環境服務
-func CreateProductionService(apiKey string) (FalAIInterface, error) {
+func CreateProductionService(apiKey string) (interfaces.VideoGenerationInterface, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key is required for production service")
 	}
-	return NewFalAIService(apiKey), nil
+	baseURL := "https://fal.run"
+	timeout := 300 * time.Second
+	return NewFalAIService(apiKey, baseURL, timeout), nil
 }

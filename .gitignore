@@ -198,6 +198,26 @@ logs/
 # Docker
 .dockerignore
 
+# Go installer files
+*.msi
+*.pkg
+*.deb
+*.rpm
+
+# Backend uploads and temp files
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/testdata/*
+!backend/testdata/.gitkeep
+
+# Compiled binaries
+backend/genVideoSub
+backend/genVideoSub.exe
+
+# Test coverage
+backend/coverage.out
+backend/coverage.html
+
 # Streamlit
 .streamlit/
 

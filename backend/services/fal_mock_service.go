@@ -25,18 +25,18 @@ type MockTask struct {
 	Result      *models.FalAIResult
 }
 
-// 確保FalMockService實現FalAIInterface接口
-var _ interfaces.FalAIInterface = (*FalMockService)(nil)
+// 確保FalMockService實現VideoGenerationInterface接口
+var _ interfaces.VideoGenerationInterface = (*FalMockService)(nil)
 
 // NewFalMockService 創建新的fal.ai mock服務實例
-func NewFalMockService() interfaces.FalAIInterface {
+func NewFalMockService() interfaces.VideoGenerationInterface {
 	return &FalMockService{
 		tasks: make(map[string]*MockTask),
 	}
 }
 
 // SubmitTask 模擬提交任務到fal.ai
-func (m *FalMockService) SubmitTask(request *models.TaskCreateRequest) (*models.FalAIResponse, error) {
+func (m *FalMockService) SubmitTask(request *models.TaskCreateRequest) (*models.APIResponse, error) {
 	// 生成mock request ID
 	requestID := fmt.Sprintf("mock_%d_%d", time.Now().Unix(), rand.Intn(10000))
 	
@@ -53,8 +53,12 @@ func (m *FalMockService) SubmitTask(request *models.TaskCreateRequest) (*models.
 	
 	logrus.Infof("Mock task submitted with request_id: %s", requestID)
 	
-	return &models.FalAIResponse{
+	return &models.APIResponse{
+		Success:   true,
+		Message:   "Mock task submitted successfully",
+		Data:      map[string]interface{}{"request_id": requestID},
 		RequestID: requestID,
+		Timestamp: time.Now(),
 	}, nil
 }
 
@@ -72,7 +76,7 @@ func (m *FalMockService) GetTaskStatus(requestID string) (string, error) {
 }
 
 // GetTaskResult 模擬獲取任務結果
-func (m *FalMockService) GetTaskResult(requestID string) (*models.FalAIResult, error) {
+func (m *FalMockService) GetTaskResult(requestID string) (*models.APIResult, error) {
 	task, exists := m.tasks[requestID]
 	if !exists {
 		return nil, fmt.Errorf("task not found: %s", requestID)
@@ -91,7 +95,26 @@ func (m *FalMockService) GetTaskResult(requestID string) (*models.FalAIResult, e
 		task.Result = m.generateMockResult(task)
 	}
 	
-	return task.Result, nil
+	// 轉換為 APIResult 格式
+	return &models.APIResult{
+		ID:     requestID,
+		Status: "completed",
+		Result: map[string]interface{}{
+			"video_url": task.Result.Video.URL,
+		},
+		CreatedAt: task.CreatedAt,
+		UpdatedAt: time.Now(),
+	}, nil
+}
+
+// GetProviderName 返回提供商名稱
+func (m *FalMockService) GetProviderName() interfaces.APIProvider {
+	return interfaces.APIProviderFalAI
+}
+
+// ValidateConfig 驗證配置（mock服務不需要驗證）
+func (m *FalMockService) ValidateConfig() error {
+	return nil // Mock服務不需要配置驗證
 }
 
 // RetryWithBackoff 模擬重試機制
@@ -145,15 +168,10 @@ func (m *FalMockService) generateMockResult(task *MockTask) *models.FalAIResult 
 	mockVideoURL := fmt.Sprintf("https://mock-storage.example.com/videos/%s.mp4", task.RequestID)
 	
 	return &models.FalAIResult{
-		Video: models.VideoResult{
-			URL:      mockVideoURL,
-			Width:    1920,
-			Height:   1080,
-			Duration: 5.0,
+		Video: struct {
+			URL string `json:"url"`
+		}{
+			URL: mockVideoURL,
 		},
-		Seed:           rand.Int63(),
-		Timings:        map[string]interface{}{"inference": 25.5, "total": 30.2},
-		HasNsfwConcepts: []bool{false},
-		Prompt:         task.Request.Prompt,
 	}
 }

@@ -21,11 +21,11 @@ type FalAIService struct {
 	client  *http.Client
 }
 
-// 確保FalAIService實現FalAIInterface接口
-var _ interfaces.FalAIInterface = (*FalAIService)(nil)
+// 確保FalAIService實現VideoGenerationInterface接口
+var _ interfaces.VideoGenerationInterface = (*FalAIService)(nil)
 
 // NewFalAIService 創建新的fal.ai服務實例
-func NewFalAIService(apiKey, baseURL string, timeout time.Duration) interfaces.FalAIInterface {
+func NewFalAIService(apiKey, baseURL string, timeout time.Duration) interfaces.VideoGenerationInterface {
 	return &FalAIService{
 		apiKey:  apiKey,
 		baseURL: baseURL,
@@ -37,7 +37,7 @@ func NewFalAIService(apiKey, baseURL string, timeout time.Duration) interfaces.F
 }
 
 // SubmitTask 提交任務到fal.ai
-func (f *FalAIService) SubmitTask(request *models.TaskCreateRequest) (*models.FalAIResponse, error) {
+func (f *FalAIService) SubmitTask(request *models.TaskCreateRequest) (*models.APIResponse, error) {
 	// 設置默認值
 	if request.Duration == "" {
 		request.Duration = "5"
@@ -106,7 +106,17 @@ func (f *FalAIService) SubmitTask(request *models.TaskCreateRequest) (*models.Fa
 	}
 
 	logrus.Infof("Task submitted to fal.ai with request_id: %s", falResponse.RequestID)
-	return &falResponse, nil
+	
+	// 轉換為通用API響應格式
+	apiResponse := &models.APIResponse{
+		Success:   true,
+		Message:   "Task submitted successfully",
+		Data:      falResponse,
+		RequestID: falResponse.RequestID,
+		Timestamp: time.Now(),
+	}
+	
+	return apiResponse, nil
 }
 
 // GetTaskStatus 查詢任務狀態
@@ -153,7 +163,7 @@ func (f *FalAIService) GetTaskStatus(requestID string) (string, error) {
 }
 
 // GetTaskResult 獲取任務結果
-func (f *FalAIService) GetTaskResult(requestID string) (*models.FalAIResult, error) {
+func (f *FalAIService) GetTaskResult(requestID string) (*models.APIResult, error) {
 	url := fmt.Sprintf("%s/fal-ai/queue/requests/%s", f.baseURL, requestID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -182,12 +192,38 @@ func (f *FalAIService) GetTaskResult(requestID string) (*models.FalAIResult, err
 	}
 
 	// 解析結果響應
-	var result models.FalAIResult
-	if err := json.Unmarshal(body, &result); err != nil {
+	var falResult models.FalAIResult
+	if err := json.Unmarshal(body, &falResult); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
+	
+	// 轉換為通用格式
+	return &models.APIResult{
+		ID:     requestID,
+		Status: "completed",
+		Result: map[string]interface{}{
+			"video_url": falResult.Video.URL,
+			"video":     falResult.Video,
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}, nil
+}
 
-	return &result, nil
+// GetProviderName 獲取提供商名稱
+func (f *FalAIService) GetProviderName() interfaces.APIProvider {
+	return interfaces.APIProviderFalAI
+}
+
+// ValidateConfig 驗證配置
+func (f *FalAIService) ValidateConfig() error {
+	if f.apiKey == "" {
+		return fmt.Errorf("FalAI API key is required")
+	}
+	if f.baseURL == "" {
+		return fmt.Errorf("FalAI base URL is required")
+	}
+	return nil
 }
 
 // RetryWithBackoff 帶指數退避的重試機制

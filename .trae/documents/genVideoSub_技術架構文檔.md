@@ -2,17 +2,29 @@
 
 ## 1. Architecture design
 
+### 1.1 整體架構 (Production Mode)
+
 ```mermaid
 graph TD
     A[Streamlit Frontend] --> B[Golang API Server]
     B --> C[Task Manager]
     B --> D[File Handler]
-    B --> E[fal.ai Integration]
+    B --> E[API Provider Manager]
+    B --> F[cURL Service]
+    B --> G[Configuration Manager]
     
-    C --> F[Memory Storage]
-    C --> G[JSON Persistence]
-    D --> H[Temp File System]
-    E --> I[fal.ai API]
+    C --> H[Memory Storage]
+    C --> I[JSON Persistence]
+    D --> J[Temp File System]
+    E --> K[fal.ai Service]
+    E --> L[Runway ML Service]
+    E --> M[Stability AI Service]
+    F --> N[HTTP Client]
+    G --> O[Config File]
+    
+    K --> P[fal.ai API]
+    L --> Q[Runway ML API]
+    M --> R[Stability AI API]
     
     subgraph "Frontend Layer"
         A
@@ -23,39 +35,104 @@ graph TD
         C
         D
         E
+        F
+        G
     end
     
     subgraph "Storage Layer"
-        F
-        G
         H
+        I
+        J
+        O
     end
     
     subgraph "External Services"
-        I
+        P
+        Q
+        R
     end
 ```
 
+### 1.2 運行模式
+
+系統支援兩種運行模式：
+
+1. **Mock Mode**: 用於開發和測試，使用模擬數據
+2. **Production Mode**: 正式環境，連接真實的API服務
+
+模式切換通過配置文件 `config.json` 中的 `mode` 字段控制。
+
 ## 2. Technology Description
 
-- Frontend: Streamlit（測試界面）
-- Backend: Golang@1.21 + Gin Framework
-- File Processing: 內建文件處理
-- Storage: 內存存儲 + JSON文件持久化
-- AI Integration: fal.ai Kling Video v1.6 Pro API
-- Task Management: Goroutine Pool + Channel Queue
+### 2.1 核心技術棧
+
+- **Frontend**: Streamlit（測試界面）
+- **Backend**: Golang@1.21 + Gin Framework
+- **File Processing**: 內建文件處理 + 多格式支援
+- **Storage**: 內存存儲 + JSON文件持久化
+- **Task Management**: Goroutine Pool + Channel Queue
+- **HTTP Client**: 內建HTTP客戶端 + 重試機制
+- **Configuration**: JSON配置文件 + 動態重載
+
+### 2.2 AI服務集成
+
+- **fal.ai**: Kling Video v1.6 Pro API（預設）
+- **Runway ML**: 視頻生成API
+- **Stability AI**: 視頻生成API
+- **API Provider Manager**: 統一的API提供商管理
+- **Dynamic Switching**: 運行時切換API提供商
+
+### 2.3 新增功能
+
+- **Production Mode**: 正式環境運行模式
+- **cURL Integration**: cURL命令生成、解析和執行
+- **Multi-Provider Support**: 多API提供商支援
+- **Configuration Management**: 動態配置管理
+- **Comprehensive Testing**: 完整的測試套件
 
 ## 3. Route definitions
 
-| Route | Purpose |
-|-------|---------|  
-| POST /api/tasks | 創建視頻生成任務 |
-| GET /api/tasks/:id/status | 查詢任務狀態 |
-| GET /api/tasks/:id/result | 獲取任務結果 |
-| GET /api/tasks | 獲取任務列表 |
-| DELETE /api/tasks/:id | 刪除任務 |
-| GET /api/health | 健康檢查 |
-| GET /api/metrics | 系統指標 |
+### 3.1 核心任務API
+
+| Route | Method | Purpose |
+|-------|--------|---------|  
+| /api/v1/tasks | POST | 創建視頻生成任務 |
+| /api/v1/tasks/:id/status | GET | 查詢任務狀態 |
+| /api/v1/tasks/:id/result | GET | 獲取任務結果 |
+| /api/v1/tasks | GET | 獲取任務列表 |
+| /api/v1/tasks/:id | DELETE | 刪除任務 |
+
+### 3.2 API提供商管理
+
+| Route | Method | Purpose |
+|-------|--------|---------|  
+| /api/v1/providers | GET | 獲取所有API提供商信息 |
+| /api/v1/providers/switch | POST | 切換API提供商 |
+| /api/v1/providers/current | GET | 獲取當前API提供商 |
+
+### 3.3 配置管理
+
+| Route | Method | Purpose |
+|-------|--------|---------|  
+| /api/v1/config | GET | 獲取當前配置 |
+| /api/v1/config | PUT | 更新配置 |
+| /api/v1/config/validate | POST | 驗證配置 |
+
+### 3.4 cURL功能
+
+| Route | Method | Purpose |
+|-------|--------|---------|  
+| /api/v1/curl/execute | POST | 執行cURL請求 |
+| /api/v1/curl/generate | POST | 生成cURL命令 |
+| /api/v1/curl/parse | POST | 解析cURL命令 |
+
+### 3.5 系統監控
+
+| Route | Method | Purpose |
+|-------|--------|---------|  
+| /api/v1/health | GET | 健康檢查 |
+| /api/v1/metrics | GET | 系統指標 |
+| /api/v1/status | GET | 服務狀態 |
 
 ## 4. fal.ai API Integration
 
@@ -128,11 +205,11 @@ request := map[string]interface{}{
 
 ## 5. API definitions
 
-### 5.1 Core API
+### 5.1 任務管理API
 
-創建視頻生成任務
+#### 創建視頻生成任務
 ```
-POST /api/tasks
+POST /api/v1/tasks
 ```
 
 Request:
@@ -144,31 +221,34 @@ Request:
 | aspect_ratio | string | false | 視頻比例 ("16:9", "9:16", "1:1", 默認 "16:9") |
 | negative_prompt | string | false | 負面提示詞 (默認 "blur, distort, and low quality") |
 | cfg_scale | float | false | CFG引導強度 (默認 0.5) |
+| provider | string | false | 指定API提供商 ("fal_ai", "runway_ml", "stability_ai") |
 
 Response:
 | Param Name | Param Type | Description |
 |------------|------------|-------------|
 | status | string | 任務狀態 (pending/processing/completed/failed) |
-| request_id | string | fal.ai 請求ID |
+| request_id | string | 外部API請求ID |
 | task_id | string | 內部任務ID |
+| provider | string | 使用的API提供商 |
 
-查詢任務狀態
+#### 查詢任務狀態
 ```
-GET /api/tasks/:id/status
+GET /api/v1/tasks/:id/status
 ```
 
 Response:
 | Param Name | Param Type | Description |
 |------------|------------|-------------|
-| id | number | 任務ID |
+| id | string | 任務ID |
 | status | string | 任務狀態 |
 | external_id | string | 外部任務ID |
+| provider | string | API提供商 |
 | created_at | string | 創建時間 |
 | completed_at | string | 完成時間 |
 
-獲取任務結果
+#### 獲取任務結果
 ```
-GET /api/tasks/:id/result
+GET /api/v1/tasks/:id/result
 ```
 
 Response:
@@ -176,10 +256,125 @@ Response:
 |------------|------------|-------------|
 | success | boolean | 獲取狀態 |
 | video_url | string | 生成的視頻URL |
-| request_id | string | fal.ai 請求ID |
+| request_id | string | 外部API請求ID |
 | status | string | 任務狀態 |
+| provider | string | API提供商 |
+
+### 5.2 API提供商管理
+
+#### 獲取所有提供商
+```
+GET /api/v1/providers
+```
+
+Response:
+| Param Name | Param Type | Description |
+|------------|------------|-------------|
+| providers | array | 提供商列表 |
+| current | string | 當前提供商 |
+
+#### 切換API提供商
+```
+POST /api/v1/providers/switch
+```
+
+Request:
+| Param Name | Param Type | isRequired | Description |
+|------------|------------|------------|-------------|
+| provider | string | true | 目標提供商名稱 |
+
+Response:
+| Param Name | Param Type | Description |
+|------------|------------|-------------|
+| success | boolean | 切換狀態 |
+| previous | string | 之前的提供商 |
+| current | string | 當前提供商 |
+
+### 5.3 配置管理API
+
+#### 獲取配置
+```
+GET /api/v1/config
+```
+
+Response:
+| Param Name | Param Type | Description |
+|------------|------------|-------------|
+| mode | string | 運行模式 |
+| api_provider | string | 當前API提供商 |
+| server | object | 服務器配置 |
+| api_provider_configs | object | API提供商配置 |
+
+#### 更新配置
+```
+PUT /api/v1/config
+```
+
+Request:
+| Param Name | Param Type | isRequired | Description |
+|------------|------------|------------|-------------|
+| mode | string | false | 運行模式 |
+| api_provider | string | false | API提供商 |
+| server | object | false | 服務器配置 |
+
+### 5.4 cURL功能API
+
+#### 執行cURL請求
+```
+POST /api/v1/curl/execute
+```
+
+Request:
+| Param Name | Param Type | isRequired | Description |
+|------------|------------|------------|-------------|
+| command | string | true | cURL命令字符串 |
+
+Response:
+| Param Name | Param Type | Description |
+|------------|------------|-------------|
+| success | boolean | 執行狀態 |
+| response | object | HTTP響應 |
+| status_code | int | HTTP狀態碼 |
+
+#### 生成cURL命令
+```
+POST /api/v1/curl/generate
+```
+
+Request:
+| Param Name | Param Type | isRequired | Description |
+|------------|------------|------------|-------------|
+| url | string | true | 請求URL |
+| method | string | false | HTTP方法 (默認GET) |
+| headers | object | false | 請求頭 |
+| body | string | false | 請求體 |
+
+Response:
+| Param Name | Param Type | Description |
+|------------|------------|-------------|
+| command | string | 生成的cURL命令 |
+
+#### 解析cURL命令
+```
+POST /api/v1/curl/parse
+```
+
+Request:
+| Param Name | Param Type | isRequired | Description |
+|------------|------------|------------|-------------|
+| command | string | true | cURL命令字符串 |
+
+Response:
+| Param Name | Param Type | Description |
+|------------|------------|-------------|
+| url | string | 解析的URL |
+| method | string | HTTP方法 |
+| headers | object | 請求頭 |
+| body | string | 請求體 |
 
 ## 6. Server architecture diagram
+
+### 6.1 Production Mode 架構
 
 ```mermaid
 graph TD
@@ -187,31 +382,89 @@ graph TD
     B --> C[Service Layer]
     C --> D[Storage Layer]
     
+    B --> B1[Task Handler]
+    B --> B2[API Handler]
+    B --> B3[Config Handler]
+    
     C --> E[Task Service]
     C --> F[File Service]
-    C --> G[fal.ai Service]
+    C --> G[API Provider Manager]
+    C --> H[cURL Service]
+    C --> I[Config Service]
     
-    D --> H[Memory Store]
-    D --> I[JSON Persistence]
-    D --> J[Temp Files]
+    G --> G1[fal.ai Service]
+    G --> G2[Runway ML Service]
+    G --> G3[Stability AI Service]
     
-    E --> K[Goroutine Pool]
-    G --> L[fal.ai API]
+    D --> J[Memory Store]
+    D --> K[JSON Persistence]
+    D --> L[Temp Files]
+    D --> M[Config Files]
     
-    subgraph "Golang Server"
-        B
-        C
+    E --> N[Goroutine Pool]
+    H --> O[HTTP Client]
+    G1 --> P[fal.ai API]
+    G2 --> Q[Runway ML API]
+    G3 --> R[Stability AI API]
+    
+    subgraph "Handler Layer"
+        B1
+        B2
+        B3
+    end
+    
+    subgraph "Service Layer"
         E
         F
         G
-    end
-    
-    subgraph "Storage"
         H
         I
+    end
+    
+    subgraph "API Providers"
+        G1
+        G2
+        G3
+    end
+    
+    subgraph "Storage Layer"
         J
+        K
+        L
+        M
+    end
+    
+    subgraph "External APIs"
+        P
+        Q
+        R
     end
 ```
+
+### 6.2 組件說明
+
+#### Handler Layer
+- **Task Handler**: 處理任務相關的HTTP請求
+- **API Handler**: 處理API提供商管理和cURL功能
+- **Config Handler**: 處理配置管理請求
+
+#### Service Layer
+- **Task Service**: 任務生命週期管理
+- **File Service**: 文件上傳和處理
+- **API Provider Manager**: 統一管理多個API提供商
+- **cURL Service**: cURL命令生成、解析和執行
+- **Config Service**: 配置文件管理和驗證
+
+#### API Providers
+- **fal.ai Service**: fal.ai API集成
+- **Runway ML Service**: Runway ML API集成
+- **Stability AI Service**: Stability AI API集成
+
+#### Storage Layer
+- **Memory Store**: 運行時數據存儲
+- **JSON Persistence**: 任務數據持久化
+- **Temp Files**: 臨時文件管理
+- **Config Files**: 配置文件存儲
 
 ## 7. Data model
 
@@ -246,7 +499,7 @@ erDiagram
 
 ### 7.2 Data Storage Format
 
-任務數據存儲 (data/tasks.json)
+#### 任務數據存儲 (data/tasks.json)
 ```json
 {
   "tasks": {
@@ -260,6 +513,7 @@ erDiagram
       "cfg_scale": 0.5,
       "status": "pending",
       "request_id": "764cabcf-b745-4b3e-ae38-1200304cf45b",
+      "provider": "fal_ai",
       "video_url": "",
       "created_at": "2024-01-15T10:30:00Z",
       "completed_at": null
@@ -273,34 +527,39 @@ erDiagram
 }
 ```
 
-臨時文件記錄 (data/temp_files.json)
+#### 系統配置 (config.json)
 ```json
 {
-  "files": {
-    "temp_001": {
-      "id": "temp_001",
-      "task_id": 1,
-      "file_path": "temp/downloads/image1.jpg",
-      "file_type": "image",
-      "created_at": "2024-01-15T10:30:00Z",
-      "expires_at": "2024-01-15T11:30:00Z"
-    }
-  }
-}
-```
-
-系統配置 (config/app.json)
-```json
-{
+  "mode": "production",
+  "environment": "production",
+  "api_provider": "fal_ai",
   "server": {
     "port": 8080,
     "host": "localhost"
   },
-  "fal_ai": {
-    "api_key": "your-fal-key",
-    "model_endpoint": "fal-ai/kling-video/v1.6/pro/image-to-video",
-    "timeout": 300,
-    "max_retries": 3
+  "api_provider_configs": {
+    "fal_ai": {
+      "api_key": "your-fal-api-key",
+      "base_url": "https://fal.run/fal-ai",
+      "model_endpoint": "fal-ai/kling-video/v1.6/pro/image-to-video",
+      "timeout": 300,
+      "max_retries": 3,
+      "enabled": true
+    },
+    "runway_ml": {
+      "api_key": "your-runway-api-key",
+      "base_url": "https://api.runwayml.com",
+      "timeout": 300,
+      "max_retries": 3,
+      "enabled": false
+    },
+    "stability_ai": {
+      "api_key": "your-stability-api-key",
+      "base_url": "https://api.stability.ai",
+      "timeout": 300,
+      "max_retries": 3,
+      "enabled": false
+    }
   },
   "storage": {
     "temp_dir": "temp",
@@ -311,6 +570,275 @@ erDiagram
   "worker": {
     "max_workers": 5,
     "queue_size": 100
+  },
+  "curl": {
+    "curl_enabled": true,
+    "curl_timeout": 30,
+    "curl_retries": 3
   }
 }
+```
+
+#### 臨時文件記錄 (data/temp_files.json)
+```json
+{
+  "files": {
+    "temp_001": {
+      "id": "temp_001",
+      "task_id": "task_001",
+      "file_path": "temp/downloads/image1.jpg",
+      "file_type": "image",
+      "created_at": "2024-01-15T10:30:00Z",
+      "expires_at": "2024-01-15T11:30:00Z"
+    }
+  }
+}
+```
+
+#### API提供商狀態 (data/provider_status.json)
+```json
+{
+  "current_provider": "fal_ai",
+  "providers": {
+    "fal_ai": {
+      "name": "fal.ai",
+      "status": "active",
+      "last_used": "2024-01-15T10:30:00Z",
+      "success_rate": 0.95,
+      "avg_response_time": 45.2
+    },
+    "runway_ml": {
+      "name": "Runway ML",
+      "status": "inactive",
+      "last_used": null,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0
+    },
+    "stability_ai": {
+      "name": "Stability AI",
+      "status": "inactive",
+      "last_used": null,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0
+    }
+  },
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### 7.3 配置管理
+
+#### 環境變數支援
+系統支援通過環境變數覆蓋配置文件設置：
+
+```bash
+# API Keys
+export FAL_API_KEY="your-fal-api-key"
+export RUNWAY_API_KEY="your-runway-api-key"
+export STABILITY_API_KEY="your-stability-api-key"
+
+# Server Configuration
+export SERVER_PORT=8080
+export SERVER_HOST="localhost"
+
+# Mode Configuration
+export APP_MODE="production"
+export API_PROVIDER="fal_ai"
+```
+
+#### 配置驗證
+系統啟動時會驗證配置的完整性和有效性：
+
+1. **必需字段檢查**: 確保所有必需的配置字段都存在
+2. **API密鑰驗證**: 檢查API密鑰格式和有效性
+3. **網絡連接測試**: 測試與API提供商的連接
+4. **權限檢查**: 驗證文件系統權限
+5. **端口可用性**: 檢查服務器端口是否可用
+
+## 8. 部署和運維
+
+### 8.1 系統安裝
+
+#### 環境要求
+- Go 1.21 或更高版本
+- Python 3.8+ (用於前端)
+- 至少 2GB RAM
+- 10GB 可用磁盤空間
+
+#### 安裝步驟
+
+1. **克隆項目**
+```bash
+git clone <repository-url>
+cd genVideoSub
+```
+
+2. **後端設置**
+```bash
+cd backend
+go mod download
+go build -o genVideoSub main.go
+```
+
+3. **前端設置**
+```bash
+cd frontend
+pip install -r requirements.txt
+```
+
+4. **配置文件**
+```bash
+cp config.example.json config.json
+# 編輯 config.json 設置 API 密鑰
+```
+
+### 8.2 配置管理
+
+#### 生產環境配置
+```json
+{
+  "mode": "production",
+  "environment": "production",
+  "api_provider": "fal_ai",
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0"
+  }
+}
+```
+
+#### 開發環境配置
+```json
+{
+  "mode": "mock",
+  "environment": "development",
+  "server": {
+    "port": 8080,
+    "host": "localhost"
+  }
+}
+```
+
+### 8.3 監控和日誌
+
+#### 日誌配置
+系統使用 logrus 進行結構化日誌記錄：
+
+```go
+// 日誌級別配置
+logrus.SetLevel(logrus.InfoLevel)
+logrus.SetFormatter(&logrus.JSONFormatter{})
+```
+
+#### 監控指標
+- **系統指標**: CPU、內存、磁盤使用率
+- **業務指標**: 任務成功率、平均處理時間
+- **API指標**: 請求量、響應時間、錯誤率
+
+#### 健康檢查
+```bash
+# 系統健康檢查
+curl http://localhost:8080/api/v1/health
+
+# API提供商連接檢查
+curl http://localhost:8080/api/v1/providers/test
+```
+
+### 8.4 故障排除
+
+#### 常見問題
+
+1. **API密鑰無效**
+   - 檢查配置文件中的API密鑰
+   - 驗證API密鑰權限
+   - 確認API提供商服務狀態
+
+2. **連接超時**
+   - 檢查網絡連接
+   - 調整超時設置
+   - 檢查防火牆配置
+
+3. **文件上傳失敗**
+   - 檢查磁盤空間
+   - 驗證文件權限
+   - 確認文件大小限制
+
+#### 日誌分析
+```bash
+# 查看錯誤日誌
+grep "ERROR" logs/app.log
+
+# 查看API調用日誌
+grep "api_call" logs/app.log | jq .
+
+# 監控任務狀態
+grep "task_status" logs/app.log
+```
+
+### 8.5 性能優化
+
+#### 系統優化
+1. **並發處理**: 調整worker數量和隊列大小
+2. **緩存策略**: 實現結果緩存減少API調用
+3. **資源清理**: 定期清理臨時文件和過期任務
+4. **連接池**: 使用HTTP連接池提高性能
+
+#### 配置優化
+```json
+{
+  "worker": {
+    "max_workers": 10,
+    "queue_size": 200
+  },
+  "storage": {
+    "cleanup_interval": 1800,
+    "max_file_size": 209715200
+  }
+}
+```
+
+## 9. 安全考慮
+
+### 9.1 API安全
+- **密鑰管理**: 使用環境變數存儲敏感信息
+- **請求驗證**: 實現請求簽名和驗證
+- **速率限制**: 防止API濫用
+- **HTTPS**: 生產環境強制使用HTTPS
+
+### 9.2 數據安全
+- **文件加密**: 敏感文件加密存儲
+- **訪問控制**: 實現基於角色的訪問控制
+- **審計日誌**: 記錄所有重要操作
+- **數據清理**: 定期清理敏感數據
+
+### 9.3 系統安全
+- **輸入驗證**: 嚴格驗證所有用戶輸入
+- **錯誤處理**: 避免洩露敏感信息
+- **依賴管理**: 定期更新依賴包
+- **安全掃描**: 定期進行安全漏洞掃描
+
+## 10. 測試策略
+
+### 10.1 測試分類
+- **單元測試**: 測試個別組件功能
+- **集成測試**: 測試組件間交互
+- **端到端測試**: 測試完整工作流程
+- **性能測試**: 測試系統性能和負載能力
+
+### 10.2 測試執行
+```bash
+# 運行所有測試
+./run_tests.bat
+
+# 運行特定測試
+go test ./tests/unit/... -v
+go test ./tests/integration/... -v
+go test ./tests/e2e/... -v
+```
+
+### 10.3 測試覆蓋率
+```bash
+# 生成測試覆蓋率報告
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
 ```
